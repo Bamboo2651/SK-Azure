@@ -20,6 +20,17 @@ class FakeTable:
     def create_entity(self, entity):
         self.entities.append(entity)
 
+    def get_entity(self, partition_key, row_key):
+        for entity in self.entities:
+            if (
+                entity["PartitionKey"] == partition_key
+                and entity["RowKey"] == row_key
+            ):
+                return entity
+        from azure.core.exceptions import ResourceNotFoundError
+
+        raise ResourceNotFoundError("対象が見つかりません。")
+
     def update_entity(self, entity, mode):
         for stored_entity in self.entities:
             if stored_entity["RowKey"] == entity["RowKey"]:
@@ -29,11 +40,11 @@ class FakeTable:
 
 
 class FakeTableService:
-    def __init__(self, table):
-        self.table = table
+    def __init__(self, tables):
+        self.tables = tables
 
-    def create_table_if_not_exists(self, _name):
-        return self.table
+    def create_table_if_not_exists(self, name):
+        return self.tables[name]
 
 
 class FakeBlob:
@@ -81,10 +92,13 @@ class AppTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.table = FakeTable()
+        cls.reply_table = FakeTable()
         cls.container = FakeContainer()
         os.environ["AZURE_STORAGE_CONNECTION_STRING"] = "UseDevelopmentStorage=true"
 
-        table_service = FakeTableService(cls.table)
+        table_service = FakeTableService(
+            {"posts": cls.table, "replies": cls.reply_table}
+        )
         blob_service = FakeBlobService(cls.container)
         with (
             patch.object(
@@ -106,6 +120,7 @@ class AppTestCase(unittest.TestCase):
 
     def setUp(self):
         self.table.entities.clear()
+        self.reply_table.entities.clear()
         self.container.blobs.clear()
 
     def test_top_page_is_displayed(self):
@@ -164,6 +179,37 @@ class AppTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(self.table.entities[0]["status"], "解決済み")
+
+    def test_question_can_receive_a_reply(self):
+        self.client.post(
+            "/post",
+            data={
+                "subject": "理科",
+                "title": "化学反応式について",
+                "message": "係数の合わせ方が分かりません。",
+                "urgency": "2",
+                "deadline": "2026-11-28T12:00",
+                "help_type": "ヒントだけ",
+            },
+        )
+        row_key = self.table.entities[0]["RowKey"]
+
+        response = self.client.post(
+            f"/reply/{row_key}",
+            data={
+                "reply_name": "回答者",
+                "reply_message": "左右の原子の数を一種類ずつ数えてみよう。",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(self.reply_table.entities), 1)
+        reply = self.reply_table.entities[0]
+        self.assertEqual(reply["PartitionKey"], row_key)
+
+        page = self.client.get("/").get_data(as_text=True)
+        self.assertIn("左右の原子の数を一種類ずつ数えてみよう。", page)
+        self.assertIn("返信 <span>1件</span>", page)
 
 
 if __name__ == "__main__":

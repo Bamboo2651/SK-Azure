@@ -19,6 +19,7 @@ if not connection_string:
 
 table_service = TableServiceClient.from_connection_string(connection_string)
 table = table_service.create_table_if_not_exists("posts")
+reply_table = table_service.create_table_if_not_exists("replies")
 
 blob_service = BlobServiceClient.from_connection_string(connection_string)
 image_container = blob_service.get_container_client("post-images")
@@ -55,6 +56,15 @@ def index():
             if keyword
             in f"{message.get('title', '')} {message.get('text', '')}".lower()
         ]
+
+    replies_by_question = {}
+    replies = list(reply_table.list_entities())
+    replies.sort(key=lambda reply: reply.get("posted_at", ""))
+    for reply in replies:
+        replies_by_question.setdefault(reply["PartitionKey"], []).append(reply)
+
+    for message in messages:
+        message["replies"] = replies_by_question.get(message["RowKey"], [])
 
     return render_template(
         "index.html",
@@ -124,6 +134,34 @@ def post():
         }
     )
     return redirect(url_for("index"))
+
+
+@app.route("/reply/<row_key>", methods=["POST"])
+def reply(row_key):
+    name = request.form.get("reply_name", "").strip() or "名無し"
+    text = request.form.get("reply_message", "").strip()
+
+    if not text:
+        return redirect(
+            url_for("index", error="返信内容を入力してください。")
+            + f"#question-{row_key}"
+        )
+
+    try:
+        table.get_entity(partition_key="board", row_key=row_key)
+    except ResourceNotFoundError:
+        abort(404)
+
+    reply_table.create_entity(
+        {
+            "PartitionKey": row_key,
+            "RowKey": str(uuid.uuid4()),
+            "name": name,
+            "text": text,
+            "posted_at": datetime.now(JST).strftime("%Y/%m/%d %H:%M:%S"),
+        }
+    )
+    return redirect(url_for("index") + f"#question-{row_key}")
 
 
 @app.route("/resolve/<row_key>", methods=["POST"])

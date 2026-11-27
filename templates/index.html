@@ -119,7 +119,7 @@
 
             <div class="question-list">
                 {% for message in messages %}
-                <article class="question-card">
+                <article id="question-{{ message.RowKey }}" class="question-card">
                     <div class="question-card__top">
                         <span class="subject subject--{{ message.get('subject', 'その他') }}">{{ message.get('subject', 'その他') }}</span>
                         <span class="status {{ 'status--solved' if message.get('status') == '解決済み' }}">{{ message.get('status', '未解決') }}</span>
@@ -154,6 +154,31 @@
                         </form>
                         {% endif %}
                     </footer>
+
+                    <section class="replies" aria-label="この質問への返信">
+                        <h4>返信 <span>{{ message.get('replies', [])|length }}件</span></h4>
+
+                        {% for reply in message.get('replies', []) %}
+                        <div class="reply">
+                            <p>{{ reply.get('text', '') }}</p>
+                            <small>{{ reply.get('name', '名無し') }}・{{ reply.get('posted_at', '') }}</small>
+                        </div>
+                        {% else %}
+                        <p class="no-replies">まだ返信はありません。最初のヒントを届けてみましょう。</p>
+                        {% endfor %}
+
+                        <form class="reply-form" action="{{ url_for('reply', row_key=message.RowKey) }}" method="post">
+                            <label>
+                                名前（省略可）
+                                <input type="text" name="reply_name" maxlength="30" placeholder="名無しでも返信できます">
+                            </label>
+                            <label>
+                                返信内容
+                                <textarea name="reply_message" rows="3" maxlength="1000" placeholder="考え方やヒントを返信してください" required></textarea>
+                            </label>
+                            <button class="button button--reply" type="submit">返信する</button>
+                        </form>
+                    </section>
                 </article>
                 {% else %}
                 <div class="empty-state">
