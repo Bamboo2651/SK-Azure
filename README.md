@@ -2,6 +2,9 @@
 
 宿題やテスト勉強で分からない問題を、高校生同士で助け合う掲示板です。
 
+- 公開サイト：https://sk-high-school-bulletin-board-fbbfcvdxbqgraadj.japaneast-01.azurewebsites.net/
+- GitHub：https://github.com/Bamboo2651/SK-Azure
+
 ## 主な機能
 
 - 教科、困り度、期限、希望する助け方を指定した質問投稿

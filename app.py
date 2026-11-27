@@ -96,7 +96,10 @@ def post():
         or not deadline
         or help_type not in HELP_TYPES
     ):
-        return redirect(url_for("index", error="必須項目をすべて入力してください。"))
+        return redirect(
+            url_for("index", error="必須項目をすべて入力してください。")
+            + "#post-form"
+        )
 
     blob_name = ""
     image_content_type = ""
@@ -106,6 +109,7 @@ def post():
         if not extension:
             return redirect(
                 url_for("index", error="画像はJPEG、PNG、GIFを選択してください。")
+                + "#post-form"
             )
 
         blob_name = f"{uuid.uuid4()}{extension}"
@@ -116,10 +120,11 @@ def post():
             content_settings=ContentSettings(content_type=image_content_type),
         )
 
+    row_key = str(uuid.uuid4())
     table.create_entity(
         {
             "PartitionKey": "board",
-            "RowKey": str(uuid.uuid4()),
+            "RowKey": row_key,
             "name": name,
             "subject": subject,
             "title": title,
@@ -133,7 +138,7 @@ def post():
             "posted_at": datetime.now(JST).strftime("%Y/%m/%d %H:%M:%S"),
         }
     )
-    return redirect(url_for("index"))
+    return redirect(url_for("index") + f"#question-{row_key}")
 
 
 @app.route("/reply/<row_key>", methods=["POST"])
@@ -177,7 +182,7 @@ def resolve(row_key):
         )
     except ResourceNotFoundError:
         abort(404)
-    return redirect(url_for("index"))
+    return redirect(url_for("index") + f"#question-{row_key}")
 
 
 @app.route("/images/<blob_name>")
@@ -201,7 +206,10 @@ def image(blob_name):
 
 @app.errorhandler(413)
 def image_too_large(_error):
-    return redirect(url_for("index", error="画像サイズは5MB以下にしてください。"))
+    return redirect(
+        url_for("index", error="画像サイズは5MB以下にしてください。")
+        + "#post-form"
+    )
 
 
 if __name__ == "__main__":

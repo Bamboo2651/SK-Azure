@@ -89,7 +89,7 @@
             </form>
         </section>
 
-        <section class="panel" aria-labelledby="questions-title">
+        <section id="questions" class="panel" aria-labelledby="questions-title">
             <div class="section-heading section-heading--row">
                 <div class="section-heading__title">
                     <span class="section-number">02</span>
@@ -102,13 +102,13 @@
             </div>
 
             <nav class="subject-filter" aria-label="教科で絞り込む">
-                <a class="chip {{ 'chip--active' if selected_subject == 'すべて' }}" href="{{ url_for('index', q=keyword) }}">すべて</a>
+                <a class="chip {{ 'chip--active' if selected_subject == 'すべて' }}" href="{{ url_for('index', q=keyword) }}#questions">すべて</a>
                 {% for subject in subjects %}
-                <a class="chip {{ 'chip--active' if selected_subject == subject }}" href="{{ url_for('index', subject=subject, q=keyword) }}">{{ subject }}</a>
+                <a class="chip {{ 'chip--active' if selected_subject == subject }}" href="{{ url_for('index', subject=subject, q=keyword) }}#questions">{{ subject }}</a>
                 {% endfor %}
             </nav>
 
-            <form class="search" action="{{ url_for('index') }}" method="get">
+            <form class="search" action="{{ url_for('index') }}#questions" method="get">
                 {% if selected_subject != 'すべて' %}
                 <input type="hidden" name="subject" value="{{ selected_subject }}">
                 {% endif %}

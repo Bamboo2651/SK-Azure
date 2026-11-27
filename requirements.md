@@ -73,6 +73,6 @@
 - ソースコード管理：GitHubのPublicリポジトリ
 - 秘密情報：SASトークン、発行プロファイル、接続文字列などはGitHubへ保存しない。
 
-サイトのURL：未公開
+サイトのURL：https://sk-high-school-bulletin-board-fbbfcvdxbqgraadj.japaneast-01.azurewebsites.net/
 
-GitHubリポジトリのURL：未作成
+GitHubリポジトリのURL：https://github.com/Bamboo2651/SK-Azure

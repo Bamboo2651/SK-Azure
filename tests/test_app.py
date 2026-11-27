@@ -148,6 +148,11 @@ class AppTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(len(self.table.entities), 1)
         entity = self.table.entities[0]
+        self.assertTrue(
+            response.headers["Location"].endswith(
+                f"#question-{entity['RowKey']}"
+            )
+        )
         self.assertEqual(entity["subject"], "数学")
         self.assertEqual(entity["status"], "未解決")
         self.assertIn(entity["blob_name"], self.container.blobs)
@@ -178,6 +183,9 @@ class AppTestCase(unittest.TestCase):
         response = self.client.post(f"/resolve/{row_key}")
 
         self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            response.headers["Location"].endswith(f"#question-{row_key}")
+        )
         self.assertEqual(self.table.entities[0]["status"], "解決済み")
 
     def test_question_can_receive_a_reply(self):
@@ -203,6 +211,9 @@ class AppTestCase(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            response.headers["Location"].endswith(f"#question-{row_key}")
+        )
         self.assertEqual(len(self.reply_table.entities), 1)
         reply = self.reply_table.entities[0]
         self.assertEqual(reply["PartitionKey"], row_key)
@@ -210,6 +221,21 @@ class AppTestCase(unittest.TestCase):
         page = self.client.get("/").get_data(as_text=True)
         self.assertIn("左右の原子の数を一種類ずつ数えてみよう。", page)
         self.assertIn("返信 <span>1件</span>", page)
+
+    def test_filters_return_to_question_list(self):
+        page = self.client.get("/").get_data(as_text=True)
+
+        self.assertIn('id="questions"', page)
+        self.assertIn(
+            'href="/?subject=%E6%95%B0%E5%AD%A6&amp;q=#questions"', page
+        )
+        self.assertIn('action="/#questions"', page)
+
+    def test_invalid_post_returns_to_post_form(self):
+        response = self.client.post("/post", data={})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers["Location"].endswith("#post-form"))
 
 
 if __name__ == "__main__":
