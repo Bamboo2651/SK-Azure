@@ -4,74 +4,197 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ひとこと掲示板</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            max-width: 600px;
-            margin: 40px auto;
-            padding: 0 16px;
-        }
-
-        form {
-            background: #f0f4f8;
-            padding: 16px;
-            border-radius: 8px;
-        }
-
-        input,
-        textarea {
-            width: 100%;
-            margin-bottom: 8px;
-            padding: 8px;
-            box-sizing: border-box;
-        }
-
-        button {
-            padding: 8px 24px;
-            background: #0078d4;
-            color: white;
-            border: none;
-            border-radius: 4px;
-        }
-
-        .message {
-            border-bottom: 1px solid #ddd;
-            padding: 12px 0;
-        }
-
-        .name {
-            font-weight: bold;
-            color: #0078d4;
-        }
-
-        .time {
-            color: #888;
-            font-size: 0.9em;
-            margin-left: 8px;
-        }
-    </style>
+    <meta name="description" content="勉強の分からないを高校生同士で助け合う掲示板">
+    <title>放課後レスキュー</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
 <body>
-    <h1>ひとこと掲示板</h1>
+    <header class="hero">
+        <div class="hero__inner">
+            <p class="eyebrow">放課後の「分からない」を助け合おう</p>
+            <h1>放課後レスキュー</h1>
+            <p>教科や締切、ほしい助け方を伝えて、高校生同士で学びを支え合う掲示板です。</p>
+            <a class="button button--primary" href="#post-form">質問を投稿する</a>
+        </div>
+    </header>
 
-    <form action="/post" method="post">
-        <input type="text" name="name" placeholder="名前（省略可）">
-        <textarea name="message" placeholder="メッセージ" required></textarea>
-        <button type="submit">投稿する</button>
-    </form>
+    <main class="layout">
+        <section class="panel" aria-labelledby="post-title">
+            <div class="section-heading">
+                <span class="section-number">01</span>
+                <div>
+                    <p class="section-kicker">ASK</p>
+                    <h2 id="post-title">質問を投稿する</h2>
+                </div>
+            </div>
 
-    <h2>投稿一覧（{{ messages|length }}件）</h2>
+            {% if error %}
+            <p class="alert" role="alert">{{ error }}</p>
+            {% endif %}
 
-    {% for m in messages %}
-    <div class="message">
-        <div><span class="name">{{ m.name }}</span><span class="time">{{ m.posted_at }}</span></div>
-        <div>{{ m.text }}</div>
-    </div>
-    {% else %}
-    <p>まだ投稿がありません</p>
-    {% endfor %}
+            <form id="post-form" action="{{ url_for('post') }}" method="post" enctype="multipart/form-data">
+                <div class="form-grid">
+                    <label>
+                        名前（省略可）
+                        <input type="text" name="name" maxlength="30" placeholder="名無しでも投稿できます">
+                    </label>
+                    <label>
+                        教科
+                        <select name="subject" required>
+                            <option value="">選択してください</option>
+                            {% for subject in subjects %}
+                            <option value="{{ subject }}">{{ subject }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label class="form-grid__wide">
+                        質問タイトル
+                        <input type="text" name="title" maxlength="80" placeholder="例：二次方程式の途中式が分かりません" required>
+                    </label>
+                    <label class="form-grid__wide">
+                        質問内容
+                        <textarea name="message" rows="5" maxlength="1000" placeholder="どこまで分かっていて、どこで困っているかを書いてください" required></textarea>
+                    </label>
+                    <label>
+                        困り度
+                        <select name="urgency" required>
+                            <option value="">選択してください</option>
+                            <option value="1">★☆☆ ちょっと困った</option>
+                            <option value="2">★★☆ 困っている</option>
+                            <option value="3">★★★ とても困っている</option>
+                        </select>
+                    </label>
+                    <label>
+                        回答がほしい期限
+                        <input type="datetime-local" name="deadline" required>
+                    </label>
+                    <label>
+                        ほしい助け方
+                        <select name="help_type" required>
+                            <option value="">選択してください</option>
+                            {% for help_type in help_types %}
+                            <option value="{{ help_type }}">{{ help_type }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        問題の画像（任意・5MB以下）
+                        <input id="image-input" type="file" name="image" accept="image/jpeg,image/png,image/gif">
+                    </label>
+                </div>
+                <img id="image-preview" class="image-preview" alt="選択した画像のプレビュー" hidden>
+                <p class="privacy-note">本名、学校名、住所などの個人情報が写っていないか確認してください。</p>
+                <button class="button button--primary" type="submit">この内容で投稿する</button>
+            </form>
+        </section>
+
+        <section class="panel" aria-labelledby="questions-title">
+            <div class="section-heading section-heading--row">
+                <div class="section-heading__title">
+                    <span class="section-number">02</span>
+                    <div>
+                        <p class="section-kicker">QUESTIONS</p>
+                        <h2 id="questions-title">みんなの質問</h2>
+                    </div>
+                </div>
+                <span class="count">{{ messages|length }}件</span>
+            </div>
+
+            <nav class="subject-filter" aria-label="教科で絞り込む">
+                <a class="chip {{ 'chip--active' if selected_subject == 'すべて' }}" href="{{ url_for('index', q=keyword) }}">すべて</a>
+                {% for subject in subjects %}
+                <a class="chip {{ 'chip--active' if selected_subject == subject }}" href="{{ url_for('index', subject=subject, q=keyword) }}">{{ subject }}</a>
+                {% endfor %}
+            </nav>
+
+            <form class="search" action="{{ url_for('index') }}" method="get">
+                {% if selected_subject != 'すべて' %}
+                <input type="hidden" name="subject" value="{{ selected_subject }}">
+                {% endif %}
+                <label class="sr-only" for="keyword">キーワード検索</label>
+                <input id="keyword" type="search" name="q" value="{{ keyword }}" placeholder="タイトルや質問内容を検索">
+                <button class="button button--dark" type="submit">検索</button>
+            </form>
+
+            <div class="question-list">
+                {% for message in messages %}
+                <article class="question-card">
+                    <div class="question-card__top">
+                        <span class="subject subject--{{ message.get('subject', 'その他') }}">{{ message.get('subject', 'その他') }}</span>
+                        <span class="status {{ 'status--solved' if message.get('status') == '解決済み' }}">{{ message.get('status', '未解決') }}</span>
+                    </div>
+                    <h3>{{ message.get('title', '投稿された質問') }}</h3>
+                    <p class="question-text">{{ message.get('text', '') }}</p>
+
+                    {% if message.get('blob_name') %}
+                    <img class="question-image" src="{{ url_for('image', blob_name=message.get('blob_name')) }}" alt="質問に添付された画像" loading="lazy">
+                    {% endif %}
+
+                    <dl class="question-meta">
+                        <div>
+                            <dt>困り度</dt>
+                            <dd class="urgency">{{ '★' * message.get('urgency', 1) }}{{ '☆' * (3 - message.get('urgency', 1)) }}</dd>
+                        </div>
+                        <div>
+                            <dt>期限</dt>
+                            <dd>{{ message.get('deadline', '指定なし') | replace('T', ' ') }}</dd>
+                        </div>
+                        <div>
+                            <dt>希望</dt>
+                            <dd>{{ message.get('help_type', '指定なし') }}</dd>
+                        </div>
+                    </dl>
+
+                    <footer class="question-card__footer">
+                        <span>{{ message.get('name', '名無し') }}・{{ message.get('posted_at', '') }}</span>
+                        {% if message.get('status') != '解決済み' %}
+                        <form action="{{ url_for('resolve', row_key=message.RowKey) }}" method="post">
+                            <button class="solve-button" type="submit">解決済みにする</button>
+                        </form>
+                        {% endif %}
+                    </footer>
+                </article>
+                {% else %}
+                <div class="empty-state">
+                    <p>条件に合う質問はまだありません。</p>
+                    <a href="#post-form">最初の質問を投稿する</a>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="rules" aria-labelledby="rules-title">
+            <h2 id="rules-title">安心して使うための3つのルール</h2>
+            <ol>
+                <li><strong>個人情報を書かない</strong><span>本名、学校名、住所、連絡先は投稿しません。</span></li>
+                <li><strong>相手を傷つけない</strong><span>回答してくれる人への思いやりを忘れません。</span></li>
+                <li><strong>答えを丸写ししない</strong><span>考え方やヒントを共有して学びにつなげます。</span></li>
+            </ol>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <p>放課後レスキュー</p>
+        <small>高校生の学びを、高校生同士で支える掲示板</small>
+    </footer>
+
+    <script>
+        const imageInput = document.querySelector('#image-input');
+        const imagePreview = document.querySelector('#image-preview');
+
+        imageInput.addEventListener('change', () => {
+            const [file] = imageInput.files;
+            if (!file) {
+                imagePreview.hidden = true;
+                imagePreview.removeAttribute('src');
+                return;
+            }
+
+            imagePreview.src = URL.createObjectURL(file);
+            imagePreview.hidden = false;
+        });
+    </script>
 </body>
 
 </html>
